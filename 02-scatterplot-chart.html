@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta charset="UTF-8">
+    <title>FCC D3 #2 - Scatter Plot</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.2/d3.min.js"></script>
+    <style>
+        body {
+            background-color: black;
+            min-width: 90vw;
+            min-height: 90vh;
+        }
+
+        div.main-container {
+            margin: auto;
+            display: flex;
+            flex-flow: column;
+            align-items: center;
+            background-color: whitesmoke;
+        }
+
+
+        #chart {
+            filter: drop-shadow(1px 1px 1px whitesmoke);
+            align-self: center;
+            position: relative;
+            margin: 3em;
+        }
+
+        .dot {
+            transition: 0.1s;
+            stroke: black;
+            cursor: pointer;
+        }
+
+        .dot:hover {
+            fill: #00ff19;
+        }
+
+        #tooltip {
+            transition: 0.5s;
+            position: absolute;
+            padding: 0.5em;
+            background-color: orange;
+            opacity: 0;
+        }
+
+        #tooltip.doping {
+            background-color: dodgerblue;
+        }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <h2 id="title"></h2>
+    <section id="chart"></section>
+</div>
+<script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+<script type="text/javascript">
+    function onLoad() {
+        const width = 800;
+        const height = 400;
+
+        d3.select('#title').text(document.title);
+
+        const chart = d3.select('#chart')
+            .append('svg')
+            .attr('width', width + 100)
+            .attr('height', height + 20)
+
+        const tooltip = d3
+            .select('body')
+            .append('div')
+            .attr('id', 'tooltip');
+
+        d3.json(
+            'https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json',
+            data => {
+
+                const getTime = e => new Date(2000, 0, 0, 0, e.Time.slice(0, 2), e.Time.slice(3, 4));
+
+                const timeBuffer = 10_000 // 10 second time buffer on either end of the Y-axis
+                const MIN_TIME = new Date(d3.min(data.map(getTime)).getTime() - timeBuffer);
+                const MAX_TIME = new Date(d3.max(data.map(getTime)).getTime() + timeBuffer);
+
+                // +/- 1 Year buffer on X-axis
+                const MIN_YEAR = d3.min(data.map(e => e.Year)) - 1;
+                const MAX_YEAR = d3.max(data.map(e => e.Year)) + 1;
+
+                const fmt = d3.timeFormat('%M:%S');
+
+                const scaleY = d3.scaleTime()
+                    .domain([MIN_TIME, MAX_TIME])
+                    .range([0, height]);
+
+                const scaleX = d3.scaleLinear()
+                    .domain([MIN_YEAR, MAX_YEAR])
+                    .range([0, width]);
+
+                const axisOffset = 60;
+                chart.selectAll('circle')
+                    .data(data.map(e => [e.Year, getTime(e)]))
+                    .enter()
+                    .append('circle')
+                    .attr('class', 'dot')
+                    .attr('fill', (_, i) => !!data[i].Doping ? 'dodgerblue' : 'orange')
+                    .attr('r', 5)
+                    .attr('cx', d => scaleX(d[0]))
+                    .attr('cy', d => scaleY(d[1]))
+                    .attr('data-xvalue', d => d[0])
+                    .attr('data-yvalue', d => d[1])
+                    .attr('transform', 'translate(' + axisOffset + ', 0)')
+                    .on('mouseover', (d, i) => {
+                        tooltip.style('opacity', 0.9)
+                            .style('left', `${d3.event.pageX}px`)
+                            .style('top', `${d3.event.pageY}px`)
+                            .style('transform', 'translate(20px, -3em)')
+                            .attr('data-year', data[i].Year)
+                        let html = `${data[i].Name}: ${data[i].Time} (${data[i].Year})`;
+                        if (!!data[i].Doping) {
+                            html += '<br>' + data[i].Doping;
+                            tooltip.attr('class', 'doping');
+                        } else {
+                            tooltip.attr('class', '');
+                        }
+
+                        tooltip.html(html);
+                    })
+                    .on('mouseout', () => {
+                        tooltip.style('opacity', 0).style('top', '0');
+                    });
+
+                const yAxis = d3.axisLeft().tickFormat(d3.timeFormat('%M:%S')).scale(scaleY);
+                chart.append('g').call(yAxis).attr('id', 'y-axis')
+                    .attr('transform', 'translate(60, 0)');
+
+                const xAxis = d3.axisBottom().tickFormat(d3.format('d')).scale(scaleX);
+                chart.append('g').call(xAxis).attr('id', 'x-axis')
+                    .attr('transform', `translate(${axisOffset}, ${height})`);
+
+                const iconSq = 20;
+                const iconBuffer = 10;
+                const legendWidth = 250;
+                const legendHeight = iconSq * 2 + iconBuffer * 3;
+                const legend = chart.append('g').attr('id', 'legend');
+                legend.append('rect')
+                    .attr('x', width - legendWidth)
+                    .attr('y', 0)
+                    .attr('width', legendWidth)
+                    .attr('height', legendHeight)
+                    .attr('fill', '#dadada')
+                    .style('opacity', 0.5);
+
+                legend.append('rect')
+                    .attr('x', width - legendWidth + iconBuffer).attr('y', iconBuffer).attr('width', iconSq)
+                    .attr('height', iconSq).attr('fill', 'dodgerblue');
+
+                legend.append('rect')
+                    .attr('x', width - legendWidth + iconBuffer).attr('y', iconBuffer * 2 + iconSq).attr('width', iconSq)
+                    .attr('height', iconSq).attr('fill', 'orange');
+
+                legend.append('text').text('With Doping Allegations')
+                    .attr('x', width - legendWidth + iconBuffer * 2 + iconSq).attr('y', iconBuffer + iconSq / 1.5);
+                legend.append('text').text('Without Doping Allegations')
+                    .attr('x', width - legendWidth + iconBuffer * 2 + iconSq).attr('y', iconBuffer * 2 + iconSq * 1.8);
+            }
+        );
+    }
+
+    document.addEventListener('DOMContentLoaded', onLoad);
+</script>
+</body>
+</html>
