@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.2/d3.min.js"></script>
+    <style>
+        body {
+            background-color: black;
+            min-width: 90vw;
+            min-height: 90vh;
+        }
+
+        div.main-container {
+            margin: auto;
+            display: flex;
+            flex-flow: column;
+            align-items: center;
+            background-color: whitesmoke;
+        }
+
+
+        #chart {
+            filter: drop-shadow(1px 1px 1px whitesmoke);
+            align-self: center;
+            position: relative;
+            margin: 3em;
+        }
+
+        .tile {
+            transition: 0.1s;
+            cursor: pointer;
+        }
+
+        .tile:hover {
+            fill: #00ff19;
+        }
+
+        #tooltip {
+            position: absolute;
+            padding: 0.5em;
+            opacity: 0;
+            border-radius: 0.5em;
+        }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <h2 id="title"></h2>
+    <h4 id="description">Top 100 Most Sold Video Games Grouped by Platform</h4>
+    <section id="chart"></section>
+    <section id="legend"></section>
+    <div id="tooltip"></div>
+</div>
+<script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+<script type="text/javascript">
+    async function onLoad() {
+        const width = 800;
+        const height = 400;
+
+        document.title = 'FCC D3 #5 - Tree Map';
+        d3.select('#title').text(document.title);
+
+        const chart = d3.select('#chart')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+        const tooltip = d3.select('#tooltip');
+
+        const scaleCategory = d3.scaleOrdinal(d3.schemeCategory20)
+
+        const jsonSource = 'https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json'
+        const vgSales = await fetch(jsonSource).then(r => r.json());
+
+        const rootNode = d3.hierarchy(vgSales)
+            .sum(d => d.value)
+            .sort((a, b) => b.height - a.height || b.value - a.value);
+
+        d3.treemap().size([width, height]).paddingInner(1)(rootNode);
+
+        const tile = chart.selectAll('g').data(rootNode.leaves()).enter().append('g').attr('class', 'group')
+            .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+        tile.append('rect').attr('id', d => d.data.id).attr('class', 'tile')
+            .attr('width', d => d.x1 - d.x0).attr('height', d => d.y1 - d.y0)
+            .attr('fill', d => scaleCategory(d.data.category))
+            .attr('data-value', d => d.data.value)
+            .attr('data-category', d => d.data.category)
+            .attr('data-name', d => d.data.name)
+            .on('mousemove', d => {
+                tooltip.style('opacity', 0.9).style('background-color', scaleCategory(d.data.category))
+                    .style('left', `${d3.event.pageX * 1.05}px`).style('top', `${d3.event.pageY}px`)
+                    .html(`<b><u>${d.data.category}</u><br>${d.data.name}</b><br>${d.data.value}`).attr('data-value', d.data.value);
+            }).on('mouseout', d => tooltip.style('opacity', 0).style('top', 'unset'));
+
+        const legendCategories = [...new Set(vgSales.children.map(d => d.name))].sort();
+
+        const box = 10;
+        const legendHeight = box * legendCategories.length * 1.5 / 3;
+        const legend = d3.select('#legend').append('svg').attr('width', width).attr('height', legendHeight);
+
+        legend.selectAll('rect')
+            .data(legendCategories)
+            .enter()
+            .append('rect')
+            .attr('class', 'legend-item')
+            .attr('fill', d => scaleCategory(d)).attr('width', box).attr('height', box)
+            .attr('x', (d, i) => (i) % 4 * box * box)
+            .attr('y', (d, i) => Math.trunc(i / 4) * box * 2).text(d => d);
+        legend.selectAll('text')
+            .data(legendCategories).enter()
+            .append('text')
+            .text(d => d).attr('x', (_, i) => i % 4 * box * box + box + 10).attr('y', (_, i) => Math.trunc(i / 4) * box * 2 + box);
+
+
+    }
+
+    document.addEventListener('DOMContentLoaded', onLoad);
+</script>
+</body>
+<!-- 2021 Christopher Wahl -->
+</html>
