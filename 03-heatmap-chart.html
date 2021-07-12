@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta charset="UTF-8">
+    <title>FCC D3 #3 - Heatmap</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.2/d3.min.js"></script>
+    <style>
+        body {
+            background-color: black;
+            min-width: 90vw;
+            min-height: 90vh;
+        }
+
+        div.main-container {
+            margin: auto;
+            display: flex;
+            flex-flow: column;
+            align-items: center;
+            background-color: whitesmoke;
+        }
+
+
+        #chart {
+            filter: drop-shadow(1px 1px 1px whitesmoke);
+            align-self: center;
+            position: relative;
+            margin: 3em;
+        }
+
+        .cell {
+            transition: 0.1s;
+            cursor: pointer;
+        }
+
+        .cell:hover {
+            stroke: black;
+        }
+
+        #tooltip {
+            transition: 0.5s;
+            position: absolute;
+            padding: 0.5em;
+            opacity: 0;
+            text-align: center;
+            border: 1px solid black;
+            border-radius: 0.5em;
+        }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <h2 id="title"></h2>
+    <h3 id="description"></h3>
+    <section id="chart"></section>
+    <div id="tooltip"></div>
+</div>
+<script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+<script src="https://cdn.skypack.dev/d3-scale-chromatic@3" type="module"></script>
+<script type="module">
+    import {interpolateRdYlBu} from "https://cdn.skypack.dev/d3-scale-chromatic@3";
+
+    function onLoad() {
+
+
+        const width = 800;
+        const height = 500;
+        const chartWidth = width - 50;
+        const chartHeight = height - 100;
+        const axisOffset = 60;
+
+        const jsonSource = 'https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/global-temperature.json'
+
+        document.title = 'FCC D3 #3 - Heat Map';
+        d3.select('#title').text(document.title);
+
+        const chart = d3.select('#chart')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+
+        const tooltip = d3.select('#tooltip');
+
+        d3.json(
+            jsonSource,
+            (_, {baseTemperature, monthlyVariance}) => {
+                const data = monthlyVariance.map(e => ({
+                    ...e,
+                    temperature: baseTemperature + e.variance,
+                    date: new Date(e.year, e.month - 1, 1)
+                }));
+                const yearExtent = d3.extent(data.map(e => e.year));
+                const monthExtent = d3.extent(data.map(e => e.month));
+                const tempExtent = d3.extent(data.map(e => e.temperature));
+
+                d3.select('#description').text(`${yearExtent[0]} - ${yearExtent[1]}: Base Temperature ${baseTemperature.toFixed(2)} °C`)
+
+
+                const boxHeight = chartHeight / 11;
+                const boxWidth = chartWidth / new Set(data.map(e => e.year)).size;
+                const scaleX = d3.scaleLinear()
+                    .domain(yearExtent)
+                    .range([0, chartWidth]);
+                const scaleY = d3.scaleLinear()
+                    .domain(monthExtent)
+                    .range([0, chartHeight - boxHeight])
+
+
+                const scaleTemp = d3.scaleSequential(interpolateRdYlBu)
+                    .domain([tempExtent[1], tempExtent[0]]);
+
+                chart.selectAll('rect')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr('width', boxWidth)
+                    .attr('height', boxHeight)
+                    .attr('class', 'cell')
+                    .attr('x', d => scaleX(d.year))
+                    .attr('y', d => scaleY(d.month))
+                    .attr('fill', d => scaleTemp(d.temperature))
+                    .attr('data-month', d => d.month - 1)
+                    .attr('data-year', d => d.year)
+                    .attr('data-temp', d => d.temperature)
+                    .attr('transform', 'translate(' + axisOffset + ', 0)')
+                    .on('mouseover', d => {
+                        let html = `${d.year} - ${d.date.toLocaleString(undefined, {month: 'long'})}<br>`;
+                        html += `${d.temperature.toFixed(2)}°C<br>`;
+                        html += `${d.variance.toFixed(2)}°C`;
+                        tooltip.attr('data-year', d.year).style('opacity', 0.9)
+                            .style('left', `${d3.event.pageX}px`)
+                            .style('top', `${d3.event.pageY}px`)
+                            .style('background-color', scaleTemp(d.temperature))
+                            .style('transform', 'translateX(1em)')
+                            .html(html)
+
+                    }).on('mouseout', _ => tooltip.style('left', 'unset').style('top', 'unset').style('opacity', 0));
+
+                const yAxis = d3.axisLeft(scaleY).tickFormat(month => new Date(2021, month - 1, 1).toLocaleString('en-us', {month: 'long'}));
+                chart.append('g').call(yAxis).attr('id', 'y-axis').attr('transform', `translate(${axisOffset}, ${boxHeight / 2})`)
+                const xAxis = d3.axisBottom(scaleX).tickFormat(year => year.toString());
+                chart.append('g').call(xAxis).attr('id', 'x-axis').attr('transform', `translate(${axisOffset}, ${chartHeight})`);
+
+
+                const avgTemp = data.reduce((p, n) => p + n.temperature, 0) / data.length;
+                const legendTemp = [tempExtent[0], avgTemp - avgTemp / 2, avgTemp + avgTemp / 2, tempExtent[1]];
+                const legendWidth = 150;
+                const legendHeight = 50;
+                const legendBox = legendHeight / 2;
+
+                const legend = chart.append('g').attr('id', 'legend')
+                    .attr('transform', 'translate(20, 30)')
+                    .attr('width', legendWidth).attr('height', legendHeight);
+
+                legend.selectAll('rect').data(legendTemp).enter().append('rect')
+                    .attr('width', legendWidth / legendTemp.length)
+                    .attr('height', legendBox)
+                    .attr('x', (d, i) => i * legendWidth / legendTemp.length)
+                    .attr('y', chartHeight).attr('fill', d => scaleTemp(d));
+
+                const legendAxis = d3.axisBottom(
+                    d3.scaleLinear().domain([tempExtent[0], tempExtent[1]]).range([0, legendWidth])
+                ).tickFormat(d => d.toFixed(1)).ticks(legendTemp.length);
+                legend.append('g').attr('transform', `translate(0, ${chartHeight + legendBox})`).call(legendAxis);
+
+            }
+        );
+    }
+
+    document.addEventListener('DOMContentLoaded', onLoad);
+</script>
+</body>
+<!-- 2021 Christopher Wahl -->
+</html>
