@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.2/d3.min.js"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://cdn.skypack.dev/d3-scale-chromatic@3" type="module"></script>
+    <style>
+        body {
+            background-color: black;
+            min-width: 90vw;
+            min-height: 90vh;
+        }
+
+        div.main-container {
+            margin: auto;
+            display: flex;
+            flex-flow: column;
+            align-items: center;
+            background-color: whitesmoke;
+        }
+
+
+        #chart {
+            filter: drop-shadow(1px 1px 1px whitesmoke);
+            align-self: center;
+            position: relative;
+            margin: 3em;
+        }
+
+        .county, .counties {
+            transition: 0.1s;
+            cursor: pointer;
+            stroke: black;
+        }
+
+        .county:hover {
+            fill: #00ff19;
+            stroke: dodgerblue;
+        }
+
+        #tooltip {
+            transition: 0.5s opacity;
+            position: absolute;
+            padding: 0.5em;
+            opacity: 0;
+            background-color: #dcffd7;
+            transform: translate(10px, -50px);
+            border-radius: 0.5em;
+        }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <h2 id="title"></h2>
+    <h4 id="description">Percentage of adults age 25 and older with a bachelor's degree or higher (2010-2014)</h4>
+    <section id="chart"></section>
+    <div id="tooltip"></div>
+</div>
+<script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+<script type="module">
+    import {interpolateBlues} from "https://cdn.skypack.dev/d3-scale-chromatic@3";
+    async function onLoad() {
+        document.title = 'FCC D3 #4 - Choropleth Map';
+        d3.select('#title').text(document.title);
+
+        const edJson = 'https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json';
+        const countyJson = 'https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json';
+        let dataSet = [];
+
+        await Promise.all([
+            fetch(edJson).then(r => r.json()), fetch(countyJson).then(r => r.json())
+        ]).then(r => {
+            const countyData = topojson.feature(r[1], r[1].objects.counties).features
+            dataSet = r[0].map(e => ({
+                ...e,
+                geometry: countyData.find(d => d.id === e.fips)
+            }))
+        });
+
+
+        const width = 1000;
+        const height = 650;
+        const chart = d3.select('#chart')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+
+
+        const tooltip = d3.select('#tooltip');
+        const edExtent = d3.extent(dataSet.map(d => d.bachelorsOrHigher));
+        const edScale = d3.scaleSequential(interpolateBlues).domain(edExtent);
+
+        chart.append('g')
+            .attr('class', 'counties')
+            .selectAll('path')
+            .data(dataSet.map(d => d.geometry))
+            .enter()
+            .append('path')
+            .attr('class', 'county')
+            .attr('data-fips', d => d.id)
+            .attr('data-education', (_, i) => dataSet[i].bachelorsOrHigher)
+            .attr('fill', (d, i) => edScale(dataSet[i].bachelorsOrHigher))
+            .attr('d', d3.geoPath())
+            .attr('transform', 'translate(0, 50)')
+            .on('mouseover', (_, i) => {
+                const entry = dataSet[i];
+                tooltip.style('left', `${d3.event.pageX}px`)
+                    .style('top', `${d3.event.pageY}px`)
+                    .style('top', `${d3.event.pageY}px`)
+                    .style('opacity', 0.9)
+                    .attr('data-education', entry.bachelorsOrHigher)
+                    .text(`${entry.area_name}, ${entry.state}: ${entry.bachelorsOrHigher.toFixed(1)} %`);
+            })
+            .on('mouseout', _ => tooltip.style('opacity', 0).style('left', 'unset').style('top', 'unset'));
+
+        const averageEd = dataSet.reduce((p, n) => p + n.bachelorsOrHigher, 0) / dataSet.length;
+
+        const legendData = [edExtent[0], averageEd - averageEd / 2, averageEd + averageEd / 2, edExtent[1]];
+        const legendWidth = width / 2;
+        const legendHeight = 50;
+        const boxWidth = legendWidth / legendData.length;
+        const legendAxis = d3.axisBottom(d3.scaleLinear().domain(edExtent).range([0, legendWidth])).tickFormat(d => `${d.toFixed(0)} %`);
+
+        const legend = chart.append('g').attr('id', 'legend').attr('width', legendWidth).attr('height', legendHeight)
+        .attr('x', (width - legendWidth) / 2).attr('y', 0);
+
+        legend.selectAll('rect').data(legendData).enter().append('rect').attr('width', boxWidth)
+        .attr('height', legendHeight / 2).attr('fill', d => edScale(d)).attr('x', (_, i) => i * boxWidth );
+        legend.append('g').call(legendAxis).attr('transform', `translate(0, ${legendHeight / 2})`);
+    }
+
+    document.addEventListener('DOMContentLoaded', onLoad);
+</script>
+</body>
+<!-- 2021 Christopher Wahl -->
+</html>

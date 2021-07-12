@@ -159,7 +159,7 @@
                     .attr('y', chartHeight).attr('fill', d => scaleTemp(d));
 
                 const legendAxis = d3.axisBottom(
-                    d3.scaleLinear().domain([tempExtent[0], tempExtent[1]]).range([0, legendWidth])
+                    d3.scaleLinear().domain(tempExtent).range([0, legendWidth])
                 ).tickFormat(d => d.toFixed(1)).ticks(legendTemp.length);
                 legend.append('g').attr('transform', `translate(0, ${chartHeight + legendBox})`).call(legendAxis);
 
