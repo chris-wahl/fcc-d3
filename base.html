@@ -39,47 +39,51 @@
         }
 
         #tooltip {
-            background-color: red;
+            transition: 0.5s;
+            position: absolute;
+            padding: 0.5em;
+            opacity: 0;
         }
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <h2 id="title"></h2>
-        <section id="chart"></section>
-    </div>
-    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
-    <script type="text/javascript">
-        function onLoad() {
-            const demoData = new Array(15).fill(null).map((e, i) => i);
-            const width = 800;
-            const height = 400;
+<div class="main-container">
+    <h2 id="title"></h2>
+    <section id="chart"></section>
+</div>
+<script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+<script type="text/javascript">
+    function onLoad() {
+        const demoData = new Array(15).fill(null).map((e, i) => i);
+        const width = 800;
+        const height = 400;
 
-            document.title = 'Set';
-            d3.select('#title').text(document.title);
+        document.title = 'Set';
+        d3.select('#title').text(document.title);
 
-            const chart = d3.select('#chart')
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height)
+        const chart = d3.select('#chart')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
 
 
-            const scaleY = d3.scaleLinear()
-                .domain([0, d3.max(demoData)])
-                .range([0, height]);
+        const scaleY = d3.scaleLinear()
+            .domain([0, d3.max(demoData)])
+            .range([0, height]);
 
-            chart.selectAll('rect')
-                .data(demoData.map(e => scaleY(e)))
-                .enter()
-                .append('rect')
-                .attr('width', 5)
-                .attr('height', d =>  d)
-                .attr('class', 'bar')
-                .attr('x', (d, i) => i * 10)
-                .attr('y', d => height - d);
-        }
+        chart.selectAll('rect')
+            .data(demoData.map(e => scaleY(e)))
+            .enter()
+            .append('rect')
+            .attr('width', 5)
+            .attr('height', d => d)
+            .attr('class', 'bar')
+            .attr('x', (d, i) => i * 10)
+            .attr('y', d => height - d);
+    }
 
-        document.addEventListener('DOMContentLoaded', onLoad);
-    </script>
+    document.addEventListener('DOMContentLoaded', onLoad);
+</script>
 </body>
+<!-- 2021 Christopher Wahl -->
 </html>

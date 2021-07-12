@@ -39,7 +39,11 @@
         }
 
         #tooltip {
-          background-color: red;
+            white-space: nowrap;
+            opacity: 0;
+            width: auto;
+            position: absolute;
+            background-color: ghostwhite;
         }
     </style>
 </head>
@@ -62,10 +66,9 @@
             .attr('height', height + 20)
 
         const tooltip = d3
-              .select('#chart')
-              .append('div')
-              .attr('id', 'tooltip')
-              .style('opacity', 0.9);
+            .select('#chart')
+            .append('div')
+            .attr('id', 'tooltip')
 
         d3.json(
             'https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/GDP-data.json',
@@ -90,30 +93,32 @@
                     .range([0, width]);
 
                 const axisOffset = 60;
-              chart.selectAll('rect')
-                      .data(GDP.map(e => scaleY(e)))
-                      .enter()
-                      .append('rect')
-                      .attr('data-gdp', (_, i) => GDP[i])
-                      .attr('data-date', (_, i) => data.data[i][0])
-                      .attr('width', BAR_WIDTH)
-                      .attr('height', d => height - d)
-                      .attr('class', 'bar')
-                      .attr('x', (d, i) => axisOffset + scaleX(DATES[i]))
-                      .attr('y', d => d)
-                      .on('mouseover', (d, i) => {
-                        tooltip.style('height', d + 'px')
-                                .style('width', BAR_WIDTH + 'px')
-                                .style('opacity', 0.9)
-                                .style('left', i * BAR_WIDTH + 'px')
-                                .style('top', height - d + 'px')
-                                .style('transform', 'translateX(60px)')
-                                .attr('data-date', data.data[i][0])
-                                .html(`${DATES[i]} - ${GDP[i].toFixed(1)} Billion`)
-                      })
-                      .on('mouseout', () => {
+                chart.selectAll('rect')
+                    .data(GDP.map(e => scaleY(e)))
+                    .enter()
+                    .append('rect')
+                    .attr('data-gdp', (_, i) => GDP[i])
+                    .attr('data-date', (_, i) => data.data[i][0])
+                    .attr('width', BAR_WIDTH)
+                    .attr('height', d => height - d)
+                    .attr('class', 'bar')
+                    .attr('x', (d, i) => axisOffset + scaleX(DATES[i]))
+                    .attr('y', d => d)
+                    .on('mouseover', (d, i) => {
+                        const ops = {style: 'currency', currency: 'USD'};
+                        const text = (GDP[i] >= 1_000
+                            ? `${(GDP[i] / 1000).toLocaleString(undefined, ops)} Tr`
+                            : `${GDP[i].toLocaleString(undefined, ops)} B`) + 'illion';
+                        tooltip.style('opacity', 0.9)
+                            .style('left', d3.event.pageX + 'px')
+                            .style('top', d3.event.pageY + 'px')
+                            .style('transform', 'translate(-500px, -100px)')
+                            .attr('data-date', data.data[i][0])
+                            .html(`${DATES[i].getFullYear()} - ${text}`)
+                    })
+                    .on('mouseout', () => {
                         tooltip.style('opacity', 0);
-                      });
+                    });
 
                 const yAxis = d3.axisLeft().scale(scaleY);
                 chart.append('g').call(yAxis).attr('id', 'y-axis')
@@ -121,7 +126,7 @@
 
                 const xAxis = d3.axisBottom().scale(scaleX);
                 chart.append('g').call(xAxis).attr('id', 'x-axis')
-                     .attr('transform', `translate(${axisOffset}, ${height})`);
+                    .attr('transform', `translate(${axisOffset}, ${height})`);
             }
         );
     }
@@ -129,4 +134,5 @@
     document.addEventListener('DOMContentLoaded', onLoad);
 </script>
 </body>
+<!-- 2021 Christopher Wahl -->
 </html>

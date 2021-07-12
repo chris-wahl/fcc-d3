@@ -88,8 +88,6 @@
                 const MIN_YEAR = d3.min(data.map(e => e.Year)) - 1;
                 const MAX_YEAR = d3.max(data.map(e => e.Year)) + 1;
 
-                const fmt = d3.timeFormat('%M:%S');
-
                 const scaleY = d3.scaleTime()
                     .domain([MIN_TIME, MAX_TIME])
                     .range([0, height]);
@@ -171,4 +169,5 @@
     document.addEventListener('DOMContentLoaded', onLoad);
 </script>
 </body>
+<!-- 2021 Christopher Wahl -->
 </html>
